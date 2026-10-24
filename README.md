@@ -2,12 +2,192 @@
 
 Caps Lock으로 한글·영문·자동 입력을 전환하는 macOS 앱입니다. 기본은 **3단계: 한 → EN → 자동**이며, **Speed: 한 ↔ EN**도 선택할 수 있습니다.
 
+[간편 설치 ZIP 다운로드 · Apple Silicon](https://github.com/kcc920926-droid/capsflow/releases/download/v0.3.2/CapsFlow-Installer-0.3.2-arm64.zip) · [빠른 설치](#빠른-설치) · [설치가 막힐 때](#설치가-막힐-때)
+
 <picture>
   <source media="(max-width: 480px)" srcset="docs/overview-mobile.svg" />
   <img src="docs/overview.svg" alt="리모컨 채널 버튼에 비유한 CapsFlow 설명: Speed와 3단계 선택, 기본 입력기와 자동 입력기의 차이, 저장되는 설정과 임시 판단, 주의점" width="736" />
 </picture>
 
 설정창의 **Caps Lock 동작** 또는 메뉴바에서 선택하세요. 기본은 기존 3단계이며, 설정 변경은 현재 입력 모드를 바꾸지 않습니다. Speed 설정에서 수동으로 ‘자동’을 선택했다면 다음 Caps는 EN입니다. ‘Speed’는 한 번에 두 모드만 오가는 동작 이름으로, 속도 측정 수치를 뜻하지 않습니다. [검증 기록](VALIDATION.md) · [모바일 그림](docs/overview-mobile.svg)
+
+## 빠른 설치
+
+**[간편 설치 ZIP 받기 — v0.3.2 / Apple Silicon](https://github.com/kcc920926-droid/capsflow/releases/download/v0.3.2/CapsFlow-Installer-0.3.2-arm64.zip)**
+([릴리스 안내·SHA-256](https://github.com/kcc920926-droid/capsflow/releases/tag/v0.3.2))
+
+메뉴 앱 0.3.2 + 한국어 우선 입력기 0.2.3이 포함된 **개발용 프리릴리스**입니다.
+현재 패키지는 Apple Silicon 전용이며, Developer ID 서명·Apple 공증 전입니다.
+
+**압축을 풀고 `Install.command`를 더블클릭하세요.** 빌드가 필요한 경우에는 빌드부터,
+두 앱의 복사·입력기 등록·메뉴 앱 실행까지 한 흐름으로 진행합니다.
+
+| 받은 파일 | 준비물 | 실행 방법 |
+| --- | --- | --- |
+| 별도 배포용 `CapsFlow-Installer-버전-arm64.zip` | 빌드 도구 불필요 · Apple Silicon용 | 압축 해제 → `CapsFlow-Installer/Install.command` 더블클릭 |
+| GitHub **Code → Download ZIP** 또는 `git clone`으로 받은 소스 | Swift 6 이상 Command Line Tools | 압축 해제 → 저장소의 `Install.command` 더블클릭 |
+
+GitHub의 **소스 ZIP과 설치 ZIP은 다릅니다.** 설치 ZIP에는 `apps` 안의 두 앱과 `bin` 안의
+도우미가 들어 있습니다. 소스에서 시작할 때 빌드 도구가 없다면 먼저 `xcode-select --install`로
+설치하고 다시 실행하세요. 현재 패키지는 로컬 ad-hoc 서명이며 Developer ID 서명·Apple 공증이 아닙니다.
+macOS가 차단하면 배포 출처를 직접 확인하고 시스템 안내를 따르세요. 보안 기능을 끄거나 일괄 우회하지 않습니다.
+
+터미널에서는 저장소 또는 설치 패키지 폴더에서 한 줄로 시작할 수도 있습니다.
+
+```sh
+zsh ./scripts/setup.sh
+```
+
+설치기가 멈췄을 때 직접 해야 하는 일은 다음과 같습니다.
+
+- **입력 소스 추가가 필요함**: 시스템 설정 → 키보드 → 텍스트 입력 편집 → ＋ → 한국어 →
+  CapsFlow 한국어 우선 → 추가. 목록에 없으면 작업 저장 후 로그아웃·로그인하고 추가하세요.
+  그다음 **같은 `Install.command`를 다시 실행**하면 이어서 진행합니다.
+- **사용 중인 입력기 교체가 필요함**: 입력 내용을 저장하고 **ABC 또는 두벌식으로 전환**한 뒤
+  다시 실행하세요. 실제 교체 전에는 다른 앱의 조합 중인 글자까지 확정·저장했는지 한 번 확인합니다.
+  확인 후 `y` 또는 `예`를 입력하세요. 취소하면 앱을 종료하거나 교체하지 않습니다.
+  설치기가 현재 입력 소스를 강제로 바꾸거나 사용 중인 입력기를 덮어쓰지 않습니다.
+- **macOS 권한 요청**: CapsFlow의 **손쉬운 사용(접근성)·입력 모니터링**을 직접 허용하세요.
+  설치기는 권한 DB를 고치거나 자동 승인하지 않습니다.
+
+이미 같은 앱이 설치돼 있으면 교체하지 않습니다. 설정은 보존하며, 교체한 기존 앱은
+`~/Library/Application Support/CapsFlow/Install Backups/` 아래에 보관합니다.
+복사·검증 실패 때는 기존 앱을 유지하고, 새 앱의 최종 이동에 실패하면 가능한 경우 원래 앱을 복구합니다.
+입력 소스 추가가 아직 안 됐으면 **기존 메뉴 앱은 교체하지 않고** 다음 실행을 기다립니다.
+
+상태 확인만 하거나, 창을 열지 않고 설치하려면 다음을 사용하세요.
+
+```sh
+zsh ./scripts/setup.sh --check
+zsh ./scripts/setup.sh --no-open
+```
+
+`--check`는 빌드·복사·등록·앱 종료·설정창 열기를 하지 않습니다. `--no-open`은 실제 설치는 수행하되
+앱과 설정창을 열지 않습니다. 기존 입력기를 교체할 때의 입력 저장 확인은 터미널에서 직접 해야 합니다.
+설치 후 메뉴의 **자동**을 선택해 `dkssud` + Space → `안녕`,
+`hello` + Space → `hello`를 확인하세요.
+
+배포용 ZIP을 직접 만들 때는 저장소에서 `zsh ./scripts/package-installer.sh`를 실행합니다.
+결과는 `dist/CapsFlow-Installer-버전-CPU.zip`이며 **현재 빌드한 CPU용**입니다.
+이 명령은 패키지만 만들고 현재 사용 중인 앱·입력 소스·권한은 변경하지 않습니다.
+저장소의 `dist/`는 Git에 포함하지 않으므로 소스 ZIP을 설치 ZIP으로 오해하지 않도록 별도로 배포하세요.
+[설치기 상세 안내](docs/INSTALLER.txt)
+
+<details>
+<summary>수동 설치 단계 보기 — 명령을 하나씩 실행하고 싶은 경우</summary>
+
+처음 설치하는 분을 위한 **소스 다운로드 → 빌드 → 입력기 등록 → 메뉴 앱 설치** 안내입니다.
+아래 명령은 터미널에서 실행합니다. 빌드나 복사에 오류가 나면 다음 단계로 진행하지 마세요.
+
+CapsFlow는 두 앱을 함께 사용합니다. **메뉴 앱만 설치하면 ‘자동’ 입력을 사용할 수 없습니다.**
+
+| 구성 | 하는 일 | 설치 위치 |
+| --- | --- | --- |
+| CapsFlow | 메뉴바, Caps Lock 전환, 긴 Backspace 처리 | `~/Applications/CapsFlow.app` |
+| CapsFlow 한국어 우선 | ‘자동’ 모드의 한글 조합·영어 판정 | `~/Library/Input Methods/CapsFlowInputMethod.app` |
+
+준비: macOS와 Swift 6 이상 빌드 도구가 필요합니다. Command Line Tools가 없다면
+`xcode-select --install`로 설치한 뒤 `swift --version`을 확인하세요. 전체 Xcode 앱은 필수가 아닙니다.
+패키지의 최소 대상은 macOS 13이지만, 실제 검증 환경은 **Apple Silicon · macOS 27.0.1 · Swift 6.4**입니다.
+모든 macOS 버전이나 Intel Mac에서 설치·동작을 확인한 것은 아닙니다.
+
+### 1. 소스를 받고 두 앱 빌드하기
+
+```sh
+git clone https://github.com/kcc920926-droid/capsflow.git
+cd capsflow
+./scripts/build.sh
+zsh ./scripts/build-input-method.sh
+```
+
+이미 소스를 받았다면 해당 폴더에서 마지막 두 명령만 실행하세요.
+빌드 결과는 `dist/CapsFlow.app`, `dist/CapsFlowInputMethod.app`입니다. 아직 설치된 상태는 아닙니다.
+
+### 2. 자동 입력기 설치·등록하기
+
+> 기존 설치를 업데이트하는 중이라면 먼저 **ABC 또는 두벌식으로 전환**하고 입력 중인 내용을
+> 저장하세요. 메뉴바에서 CapsFlow를 종료하고, 기존 CapsFlowInputMethod 프로세스도 종료된 것을
+> 확인한 뒤 교체하세요. 실행 중인 입력기를 그대로 덮어쓰지 마세요.
+
+저장소 폴더에서 다음을 실행합니다. 사용자 Library에 설치하므로 이 과정에 `sudo`는 사용하지 않습니다.
+
+```sh
+mkdir -p "$HOME/Library/Input Methods"
+ditto "dist/CapsFlowInputMethod.app" "$HOME/Library/Input Methods/CapsFlowInputMethod.app"
+"$HOME/Library/Input Methods/CapsFlowInputMethod.app/Contents/MacOS/CapsFlowInputMethod" \
+  --register "$HOME/Library/Input Methods/CapsFlowInputMethod.app"
+```
+
+등록 명령에 `log out/in`, `not visible` 안내가 나오면 아직 사용할 준비가 끝나지 않은 상태입니다.
+파일을 다시 복사하는 대신 아래 단계에서 입력 소스를 추가하세요.
+
+### 3. macOS 입력 소스에 추가하기
+
+**시스템 설정 → 키보드 → 텍스트 입력의 편집 → ＋ → 한국어 → CapsFlow 한국어 우선 → 추가**로 들어갑니다.
+이미 추가돼 있다면 중복 추가할 필요는 없습니다. 목록에 보이지 않으면 작업을 저장하고
+**로그아웃한 뒤 다시 로그인**하여 같은 메뉴를 확인하세요. 이 Mac의 최초 설치에서도 재로그인이 필요했습니다.
+기존 ABC·두벌식은 삭제하지 말고 유지하세요.
+
+다시 터미널에서 저장소 폴더로 이동해 확인합니다.
+
+```sh
+./dist/CapsFlow.app/Contents/MacOS/CapsFlow --native-input-method-ready
+```
+
+**`CapsFlow native input method ready.`**가 나오면 다음 단계로 진행하세요.
+`Native input method is not enabled`가 나오면 입력 소스 추가·재로그인부터 확인해야 합니다.
+
+### 4. 메뉴 앱 설치와 권한 허용
+
+저장소 폴더에서 실행합니다.
+
+```sh
+./scripts/install.sh
+```
+
+이 스크립트는 입력기 준비 상태를 확인한 뒤 메뉴 앱을 `~/Applications/CapsFlow.app`에 설치하고 실행합니다.
+준비되지 않았다면 기존 메뉴 앱을 바꾸지 않고 중단합니다.
+
+CapsFlow의 권한 안내를 따라 **시스템 설정 → 개인정보 보호 및 보안**에서 다음을 허용하세요.
+
+- **손쉬운 사용(접근성)**: CapsFlow 켜기
+- **입력 모니터링**: CapsFlow 켜기
+
+항목을 직접 추가해야 한다면 `~/Applications/CapsFlow.app`을 선택합니다. 시스템이 관리자 인증을
+요청하면 macOS 창에 직접 입력하세요. 권한은 메뉴 앱의 전역 키 처리에 사용됩니다.
+소스를 다시 빌드해 앱을 교체하면 기존 항목이 켜져 있어도 재승인이 필요할 수 있습니다.
+
+### 5. 처음 실행 확인
+
+메뉴바의 CapsFlow에서 **자동**을 선택하고, 중요한 내용이 없는 빈 입력창에서
+아래 키를 **붙여넣지 말고 직접** 입력해보세요.
+
+| 입력 | 공백으로 확정한 뒤 결과 |
+| --- | --- |
+| `dkssud` + Space | `안녕` |
+| `hello` + Space | `hello` |
+
+자동 모드는 기본적으로 한글을 조합하고, `hello`처럼 명확한 영어는 **단어를 확정할 때** 영어로 돌립니다.
+영어도 공백 전에는 한글 조합으로 보일 수 있습니다.
+
+Caps Lock의 기본 동작은 **한 → EN → 자동**입니다. 한·영만 오가고 싶으면 설정의
+**Caps Lock 동작 → Speed**를 선택하세요. 원격에서 Caps Lock이 전달되지 않으면
+**⌃⇧Space(Control+Shift+Space)** 또는 메뉴의 전환 버튼을 사용할 수 있습니다.
+로그인 시 자동 실행은 CapsFlow 설정에서 필요할 때 켜세요.
+
+</details>
+
+### 설치가 막힐 때
+
+- **자동 입력기가 목록에 없음 / 메뉴 앱 설치가 중단됨**: 간편 설치 안내 또는 수동 설치 2~3단계를 확인하고, 필요하면 로그아웃·로그인 후
+  입력 소스에 추가하세요. 메뉴 앱 설치만 반복해서는 해결되지 않습니다.
+- **Caps Lock이 반응하지 않음 / 권한 대기 상태**: 설치된 CapsFlow 앱이 손쉬운 사용·입력 모니터링에
+  등록됐는지 확인하세요. 재빌드 후에는 해당 항목을 다시 허용하고 메뉴 앱을 재실행해야 할 수 있습니다.
+- **입력기 교체 뒤 특정 앱에서 글자가 입력되지 않음**: 먼저 ABC·두벌식으로 돌아가세요.
+  미전송 내용을 보관한 뒤 해당 앱을 완전히 종료·재실행해 확인하세요. 이 Mac의 Codex에서는 이 방법으로
+  복구됐지만 모든 앱에 같은 해결을 보장하지는 않습니다.
+- **잠시 원래 입력 방식으로 돌아가기**: macOS 입력 메뉴에서 **ABC 또는 두벌식**을 선택하고,
+  CapsFlow 메뉴 앱을 일시 정지하거나 종료하세요.
 
 ## 0.3.2 · 이번 버전에서 확인한 동작
 
