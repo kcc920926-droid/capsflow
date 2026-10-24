@@ -12,6 +12,12 @@ func id(_ source: TISInputSource) -> String {
     return Unmanaged<CFString>.fromOpaque(pointer).takeUnretainedValue() as String
 }
 if args.contains("--self-test") { runInputMethodChecks(); exit(0) }
+if args.contains("--health") {
+    guard let data = try? Data(contentsOf: InputHealth.url), let value = String(data: data, encoding: .utf8) else {
+        print("No native input health snapshot yet."); exit(1)
+    }
+    print(value); exit(0)
+}
 if args.contains("--is-enabled") {
     exit(sources(includeDisabled: false).contains { id($0) == sourceID } ? 0 : 1)
 }

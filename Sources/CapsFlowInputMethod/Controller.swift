@@ -9,22 +9,39 @@ final class NativeClient: CompositionClient {
     init(_ client: IMKTextInput, markedAttributes: [NSAttributedString.Key: Any] = [:]) {
         self.client = client; self.markedAttributes = markedAttributes
     }
-    var selection: NSRange { client.selectedRange() }
-    var marked: NSRange { client.markedRange() }
+    var selection: NSRange {
+        InputHealth.shared.phase("selection.begin")
+        let range = client.selectedRange()
+        InputHealth.shared.phase("selection.end", count: CompositionSession.validInsertionRange(range) ? "validSelections" : "invalidSelections")
+        return range
+    }
+    var marked: NSRange {
+        InputHealth.shared.phase("markedRange.begin")
+        let range = client.markedRange()
+        InputHealth.shared.phase("markedRange.end", count: CompositionSession.validInsertionRange(range) ? "validMarks" : "invalidMarks")
+        return range
+    }
     var documentLength: Int? {
+        InputHealth.shared.phase("length.begin")
         let length = client.length()
+        InputHealth.shared.phase("length.end")
         return length >= 0 && length != NSNotFound ? length : nil
     }
     func substring(_ range: NSRange) -> String? {
         guard range.location != NSNotFound, range.length <= SelectionConversion.maximumUTF16 else { return nil }
         var actual = NSRange(location: NSNotFound, length: 0)
-        guard let text = client.string(from: range, actualRange: &actual), actual == range else { return nil }
+        InputHealth.shared.phase("substring.begin")
+        let result = client.string(from: range, actualRange: &actual)
+        InputHealth.shared.phase("substring.end")
+        guard let text = result, actual == range else { return nil }
         return text
     }
     func mark(_ text: String) {
+        InputHealth.shared.phase("mark.begin", count: "markRequests")
         client.setMarkedText(CompositionAppearance.text(text, attributes: markedAttributes),
                              selectionRange: CompositionAppearance.selection(for: text),
                              replacementRange: CompositionSession.currentSelection)
+        InputHealth.shared.phase("mark.end")
     }
     func clearMarkedText() {
         // setMarkedText("") cancels/deletes the marked range. insertText("")
@@ -32,7 +49,11 @@ final class NativeClient: CompositionClient {
         // Never synthesize Backspace or replace surrounding committed text.
         mark("")
     }
-    func insert(_ text: String, replacing range: NSRange) { client.insertText(text, replacementRange: range) }
+    func insert(_ text: String, replacing range: NSRange) {
+        InputHealth.shared.phase("insert.begin", count: "insertRequests")
+        client.insertText(text, replacementRange: range)
+        InputHealth.shared.phase("insert.end")
+    }
 }
 
 @objc(CapsFlowInputController)
@@ -46,18 +67,27 @@ final class CapsFlowInputController: IMKInputController {
     private var markedAttributes: [NSAttributedString.Key: Any] = [:]
 
     override func activateServer(_ sender: Any!) {
+        InputHealth.shared.phase("activate.begin", count: "activations")
         active = true; session.reset()
         let native = sender as? IMKTextInput
+        InputHealth.shared.phase("activate.layout")
         native?.overrideKeyboard(withKeyboardNamed: "com.apple.keylayout.ABC")
         // Query once per activation, not over IPC for every typed character.
+        InputHealth.shared.phase("activate.attributes")
         markedAttributes = CompositionAppearance.attributes(supportedNames: native?.validAttributesForMarkedText() ?? [])
         let excluded = UserDefaults(suiteName: "local.capsflow.app")?.stringArray(forKey: "excludedApps") ?? []
-        passthrough = native?.bundleIdentifier().map { excluded.contains($0) } ?? false
+        InputHealth.shared.phase("activate.identity")
+        let identifier = native?.bundleIdentifier()
+        InputHealth.shared.client(identifier)
+        passthrough = identifier.map { excluded.contains($0) } ?? false
         session.onChange = { [weak self] in self?.schedulePreview() }
+        InputHealth.shared.phase("activate.end")
     }
     override func deactivateServer(_ sender: Any!) {
+        InputHealth.shared.phase("deactivate.begin", count: "deactivations")
         if let client = sender as? IMKTextInput { session.commit(to: NativeClient(client)) }
         active = false; session.reset(); hidePreview()
+        InputHealth.shared.phase("deactivate.end")
     }
     override func commitComposition(_ sender: Any!) {
         if let client = sender as? IMKTextInput { session.commit(to: NativeClient(client)) }
@@ -69,6 +99,9 @@ final class CapsFlowInputController: IMKInputController {
             NSEvent.EventTypeMask.otherMouseDown.rawValue)
     }
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
+        InputHealth.shared.phase("handle.begin", count: "events")
+        var accepted = false
+        defer { InputHealth.shared.phase(accepted ? "handle.accepted" : "handle.passed", count: accepted ? "accepted" : "passed") }
         guard active, !passthrough, let event, let client = sender as? IMKTextInput else { return false }
         let native = NativeClient(client, markedAttributes: markedAttributes)
         let flags = event.modifierFlags
@@ -76,14 +109,16 @@ final class CapsFlowInputController: IMKInputController {
             session.commit(to: native); session.reset(); hidePreview(); return false
         }
         if event.type == .flagsChanged {
-            return session.flags(key: event.keyCode, option: flags.contains(.option), command: flags.contains(.command),
+            accepted = session.flags(key: event.keyCode, option: flags.contains(.option), command: flags.contains(.command),
                                  control: flags.contains(.control), shift: flags.contains(.shift),
                                  at: event.timestamp, client: native)
+            return accepted
         }
         guard event.type == .keyDown else { return false }
-        return session.handle(InputStroke(key: event.keyCode, text: event.characters ?? "", time: event.timestamp,
+        accepted = session.handle(InputStroke(key: event.keyCode, text: event.characters ?? "", time: event.timestamp,
                                           command: flags.contains(.command), option: flags.contains(.option),
                                           control: flags.contains(.control), shift: flags.contains(.shift)), client: native)
+        return accepted
     }
     private func hidePreview() { preview?.cancel(); preview = nil; panel?.hide() }
     private func schedulePreview() {

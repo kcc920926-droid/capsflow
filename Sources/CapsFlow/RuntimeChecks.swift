@@ -5,6 +5,126 @@ import InputCore
 func runRuntimeChecks() {
     var checks = 0
     func expect(_ value: Bool) { checks += 1; precondition(value, "Runtime check \(checks) failed") }
+    var hold = BackspaceHold()
+    expect(EventEngine.isUnmodifiedBackspace([]))
+    expect(EventEngine.isUnmodifiedBackspace(.maskAlphaShift))
+    for flags: CGEventFlags in [.maskCommand, .maskAlternate, .maskControl, .maskShift, .maskSecondaryFn,
+                               [.maskCommand, .maskAlternate], [.maskControl, .maskShift]] {
+        expect(!EventEngine.isUnmodifiedBackspace(flags))
+    }
+    expect(!hold.wordDeletion(repeating: true, at: 10, eligible: true)) // lost initial keyDown
+    expect(!hold.wordDeletion(repeating: false, at: 10, eligible: true))
+    expect(!hold.wordDeletion(repeating: true, at: 10.4, eligible: true))
+    expect(!hold.wordDeletion(repeating: true, at: 10.999, eligible: true))
+    expect(hold.wordDeletion(repeating: true, at: 11, eligible: true))
+    expect(hold.wordDeletion(repeating: true, at: 11.04, eligible: true))
+    hold.reset() // release/focus/click/modifier/mode/pause
+    expect(!hold.wordDeletion(repeating: true, at: 11.1, eligible: true))
+    for start in 0..<40 {
+        let time = Double(start) * 3
+        expect(!hold.wordDeletion(repeating: false, at: time, eligible: true))
+        expect(!hold.wordDeletion(repeating: true, at: time + 0.5, eligible: true))
+        expect(hold.wordDeletion(repeating: true, at: time + 1, eligible: true))
+        expect(hold.wordDeletion(repeating: true, at: time + 1.1, eligible: true))
+        hold.reset()
+        expect(!hold.wordDeletion(repeating: true, at: time + 1.2, eligible: true))
+    }
+    expect(!hold.wordDeletion(repeating: false, at: 10, eligible: true))
+    expect(!hold.wordDeletion(repeating: true, at: 11, eligible: false))
+    expect(!hold.wordDeletion(repeating: true, at: 11.1, eligible: true))
+    for time in [Double.nan, Double.infinity, -Double.infinity] {
+        _ = hold.wordDeletion(repeating: false, at: 0, eligible: true)
+        expect(!hold.wordDeletion(repeating: true, at: time, eligible: true))
+        expect(!hold.wordDeletion(repeating: true, at: 1, eligible: true))
+    }
+    _ = hold.wordDeletion(repeating: false, at: 20, eligible: true)
+    expect(!hold.wordDeletion(repeating: true, at: 19, eligible: true))
+    _ = hold.wordDeletion(repeating: false, at: 20, eligible: true)
+    expect(!hold.wordDeletion(repeating: true, at: 23, eligible: true)) // stale/missing keyUp
+    expect(!hold.wordDeletion(repeating: false, at: 30, eligible: false))
+    expect(!hold.wordDeletion(repeating: true, at: 31, eligible: true))
+    // A fast new tap starts over even if a remote keyUp was lost.
+    _ = hold.wordDeletion(repeating: false, at: 40, eligible: true)
+    expect(hold.wordDeletion(repeating: true, at: 41, eligible: true))
+    expect(!hold.wordDeletion(repeating: false, at: 41.1, eligible: true))
+    expect(!hold.wordDeletion(repeating: true, at: 41.2, eligible: true))
+    // Remote Caps packets and local F18 are tested without posting any input.
+    var trigger = CapsToggleTrigger()
+    func packet(_ type: CGEventType, _ key: Int64, _ flags: CGEventFlags = [], _ time: Double = 1,
+                repeatKey: Bool = false) -> CapsToggleTrigger.Result {
+        trigger.observe(type: type, key: key, flags: flags, repeating: repeatKey, time: time)
+    }
+    expect(packet(.keyDown, 0) == .pass)
+    expect(packet(.leftMouseDown, 57) == .pass)
+    expect(!trigger.capturedRawCaps)
+    expect(packet(.keyDown, 79) == .toggle)
+    expect(packet(.keyDown, 79) == .consume)
+    expect(packet(.keyDown, 79, [], 1.1, repeatKey: true) == .consume)
+    expect(packet(.keyUp, 79) == .consume)
+    expect(packet(.keyDown, 79) == .toggle)
+    trigger.reset()
+    // Flags-only clients toggle on either latch edge, not on a duplicate release.
+    for index in 0..<40 {
+        let flags: CGEventFlags = index.isMultiple(of: 2) ? .maskAlphaShift : []
+        let time = 2 + Double(index) * 0.02
+        expect(packet(.flagsChanged, 57, flags, time) == .toggle)
+        expect(packet(.flagsChanged, 57, flags, time + 0.001) == .consume)
+    }
+    expect(trigger.capturedRawCaps)
+    trigger.reset()
+    expect(packet(.flagsChanged, 57, [], 1) == .toggle) // first edge may be Off
+    trigger.reset()
+    for index in 0..<40 {
+        let time = 3 + Double(index) * 0.05
+        expect(packet(.keyDown, 57, [], time) == .toggle)
+        expect(packet(.keyDown, 57, [], time + 0.001, repeatKey: true) == .consume)
+        expect(packet(.keyUp, 57, [], time + 0.002) == .consume)
+    }
+    // Key-pair clients that additionally publish latch transitions count once.
+    for flagsFirst in [false, true] {
+        trigger.reset()
+        for index in 0..<20 {
+            let flags: CGEventFlags = index.isMultiple(of: 2) ? .maskAlphaShift : []
+            let time = 10 + Double(index) * 0.1
+            if flagsFirst {
+                expect(packet(.flagsChanged, 57, flags, time) == .toggle)
+                expect(packet(.keyDown, 57, flags, time + 0.005) == .consume)
+            } else {
+                expect(packet(.keyDown, 57, flags, time) == .toggle)
+                expect(packet(.flagsChanged, 57, flags, time + 0.005) == .consume)
+            }
+            expect(packet(.keyUp, 57, flags, time + 0.01) == .consume)
+        }
+    }
+    trigger.reset()
+    expect(packet(.keyDown, 57, .maskAlphaShift, 1) == .toggle)
+    expect(packet(.keyUp, 57, .maskAlphaShift, 1.005) == .consume)
+    expect(packet(.flagsChanged, 57, .maskAlphaShift, 1.01) == .consume)
+    expect(packet(.flagsChanged, 57, [], 1.1) == .toggle)
+    trigger.reset()
+    expect(packet(.keyDown, 49, [.maskControl, .maskShift]) == .toggle)
+    expect(packet(.keyDown, 49, [.maskControl, .maskShift], 1, repeatKey: true) == .consume)
+    expect(packet(.keyUp, 49) == .consume) // modifiers can be released first
+    expect(packet(.keyDown, 49, [.maskControl, .maskShift]) == .toggle)
+    trigger.releaseHeldKeys()
+    expect(packet(.keyDown, 49, [.maskControl, .maskShift]) == .toggle)
+    trigger.reset()
+    for flags: CGEventFlags in [[], .maskShift, .maskControl, [.maskControl, .maskShift, .maskCommand],
+                               [.maskControl, .maskShift, .maskAlternate]] {
+        expect(packet(.keyDown, 49, flags) == .pass)
+    }
+    for scalar in Array("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") {
+        let text = String(scalar)
+        expect(CapsToggleTrigger.unlatchedASCII(text, flags: .maskAlphaShift) == text.lowercased())
+        expect(CapsToggleTrigger.unlatchedASCII(text, flags: [.maskAlphaShift, .maskShift]) == text.uppercased())
+    }
+    for text in ["안녕", "😀", "ABC", "aB", "1", "!", "", "é"] {
+        expect(CapsToggleTrigger.unlatchedASCII(text, flags: .maskAlphaShift) == text)
+    }
+    for flags: CGEventFlags in [[], .maskShift, [.maskAlphaShift, .maskAlternate],
+                               [.maskAlphaShift, .maskCommand], [.maskAlphaShift, .maskControl]] {
+        expect(CapsToggleTrigger.unlatchedASCII("A", flags: flags) == "A")
+    }
     expect(CapsLockBehavior.restored(nil) == .cycle)
     expect(CapsLockBehavior.restored("unknown") == .cycle)
     expect(CapsLockBehavior.restored("speed") == .speed)

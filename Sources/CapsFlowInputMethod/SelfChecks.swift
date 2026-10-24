@@ -64,6 +64,33 @@ func runInputMethodChecks() {
         count += 1; precondition(result(), "Input method check failed: \(label)")
     }
     let engine = LanguageEngine()
+    for range in [NSRange(location: 0, length: 0), NSRange(location: 2, length: 3)] {
+        expect(CompositionSession.validInsertionRange(range), "valid insertion target")
+    }
+    for range in [NSRange(location: NSNotFound, length: 0), NSRange(location: 0, length: NSNotFound),
+                  NSRange(location: -1, length: 0), NSRange(location: 0, length: -1),
+                  NSRange(location: Int.max - 1, length: 2)] {
+        expect(!CompositionSession.validInsertionRange(range), "invalid insertion target")
+    }
+    do {
+        let client = MemoryClient()
+        client.selection = NSRange(location: NSNotFound, length: 0)
+        let session = CompositionSession(language: engine)
+        for text in ["a", "r", " ", "?", "안녕"] {
+            expect(!session.handle(InputStroke(key: 0, text: text, time: 0), client: client), "unavailable target passes original input")
+            expect(client.writes == 0 && session.composition.isEmpty, "unavailable target is never written")
+        }
+    }
+    for key in [UInt16(51), 53, 36, 123] {
+        let client = MemoryClient()
+        let session = CompositionSession(language: engine)
+        expect(session.handle(InputStroke(key: 0, text: "r", time: 0), client: client), "compose before lost client")
+        client.selection = NSRange(location: NSNotFound, length: 0)
+        client.marked = NSRange(location: NSNotFound, length: 0)
+        let writes = client.writes
+        expect(!session.handle(InputStroke(key: key, text: "", time: 1), client: client), "lost target passes delete/navigation/Esc")
+        expect(client.writes == writes && session.composition.isEmpty, "lost target leaves host text alone")
+    }
     func new(_ prefix: String = "", caret: Int? = nil) -> (CompositionSession, MemoryClient) {
         (CompositionSession(language: engine), MemoryClient(prefix, caret: caret))
     }
@@ -201,6 +228,20 @@ func runInputMethodChecks() {
         client.insert("", replacing: client.selection)
         expect(!session.toggle(client), "cleared field cannot resurrect old last-word/selection edit")
         expect(session.composition.recentEnglish == 0, "cut/undo/delete empty-field reset")
+    }
+    // Long-Backspace's Option+Delete must commit preedit then let the host do
+    // normal word deletion. This tests existing native behavior, not a new IME.
+    for raw in ["gksrmf", "hello", "asdf"] {
+        let (session, client) = new()
+        type(raw, session, client)
+        expect(!session.handle(InputStroke(key: 51, text: "", time: clock, option: true), client: client), "Option+Delete reaches host")
+        expect(session.composition.isEmpty && client.marked.location == NSNotFound, "preedit committed before host word deletion")
+        _ = NSApplication.shared
+        let view = NSTextView(frame: NSRect(x: 0, y: 0, width: 320, height: 80))
+        view.string = "앞 " + client.text
+        view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0))
+        view.deleteWordBackward(nil)
+        expect(view.string == "앞 ", "own AppKit view deletes preceding word")
     }
     // Marked-text appearance is separate from composition/language policy.
     do {

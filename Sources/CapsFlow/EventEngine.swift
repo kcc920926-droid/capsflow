@@ -20,6 +20,9 @@ final class EventEngine {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private let mapper = CapsKeyMapper()
+    private var capsTrigger = CapsToggleTrigger()
+    private var backspaceHold = BackspaceHold()
+    private(set) var longBackspaceEnabled = UserDefaults.standard.object(forKey: BackspaceHold.preferenceKey) as? Bool ?? true
     private let worker = DispatchQueue(label: "local.capsflow.context", qos: .userInteractive)
     // Preview geometry must not queue ahead of actual Space/Enter conversion.
     private let suggestionWorker = DispatchQueue(label: "local.capsflow.suggestion", qos: .userInitiated)
@@ -77,8 +80,10 @@ final class EventEngine {
         self.language = language
         self.mode = InputMode(rawValue: UserDefaults.standard.object(forKey: "mode") as? Int ?? 2) ?? .automatic
         self.capsLockBehavior = CapsLockBehavior.restored(UserDefaults.standard.string(forKey: CapsLockBehavior.preferenceKey))
+        mapper.onCountChanged = { [weak self] in self?.refreshConnectionStatus() }
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
+            self.capsTrigger.releaseHeldKeys()
             self.cancelPending(toOriginalProcess: true)
             self.reset()
             if self.running { self.prepareFrontmostContext() }
@@ -122,8 +127,9 @@ final class EventEngine {
         do { try mapper.start() }
         catch { stop(); status = error.localizedDescription; onUpdate?(); return false }
         running = true
+        capsTrigger.reset()
         setMode(mode)
-        status = "Caps Lock 연결됨 · " + capsLockBehavior.title
+        status = connectionStatus
         onUpdate?()
         return true
     }
@@ -131,6 +137,7 @@ final class EventEngine {
     func stop() {
         cancelPending()
         running = false
+        capsTrigger.reset()
         if InputSources.matches(.automatic, identifier: InputSources.currentID) {
             // Pausing/quitting the menu app must not silently leave its native
             // converter active. Both built-in sources remain untouched.
@@ -170,12 +177,25 @@ final class EventEngine {
     func setCapsLockBehavior(_ value: CapsLockBehavior) {
         capsLockBehavior = value
         UserDefaults.standard.set(value.rawValue, forKey: CapsLockBehavior.preferenceKey)
-        if running { status = "Caps Lock 연결됨 · " + value.title }
+        if running { status = connectionStatus }
         // Changing a key route must not silently switch the current IME/mode.
         onUpdate?()
     }
     func cycle() { setMode(capsLockBehavior.next(from: mode)) }
-    func reset() { releaseSelectionEdit(toOriginalProcess: true); clearSuggestion(); continuation = nil; token = ""; invalidToken = false; last = nil; generation += 1 }
+    func setLongBackspaceEnabled(_ enabled: Bool) {
+        longBackspaceEnabled = enabled; backspaceHold.reset()
+        UserDefaults.standard.set(enabled, forKey: BackspaceHold.preferenceKey)
+        onUpdate?()
+    }
+    private var connectionStatus: String {
+        let path = mapper.mappedCount > 0 ? "Caps Lock 연결됨" : "원격 키 연결됨 · 직접 연결 키보드 없음/매핑 없음"
+        return path + " · " + capsLockBehavior.title
+    }
+    private func refreshConnectionStatus() {
+        guard running else { return }
+        status = connectionStatus; onUpdate?()
+    }
+    func reset() { backspaceHold.reset(); releaseSelectionEdit(toOriginalProcess: true); clearSuggestion(); continuation = nil; token = ""; invalidToken = false; last = nil; generation += 1 }
 
     private func clearSuggestion() {
         rightOptionTap.reset()
@@ -231,6 +251,9 @@ final class EventEngine {
     }
 
     static let keyboardMask = [CGEventType.keyDown, .keyUp, .flagsChanged].reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
+    static func isUnmodifiedBackspace(_ flags: CGEventFlags) -> Bool {
+        flags.intersection([.maskCommand, .maskAlternate, .maskControl, .maskShift, .maskSecondaryFn]).isEmpty
+    }
     static func hasKeyboardEvents(_ mask: CGEventMask) -> Bool { mask & keyboardMask == keyboardMask }
     private func hasLiveKeyboardTap() -> Bool {
         var entries = [CGEventTapInformation](repeating: CGEventTapInformation(), count: 128)
@@ -260,6 +283,7 @@ final class EventEngine {
 
     private func handle(proxy: CGEventTapProxy?, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            capsTrigger.reset()
             cancelPending(); reset()
             lastLookupFailure = "키 이벤트 연결 일시 중단 후 복구"
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
@@ -270,9 +294,35 @@ final class EventEngine {
         guard running else { return Unmanaged.passUnretained(event) }
         let key = event.getIntegerValueField(.keyboardEventKeycode)
         let isKeyboard = type == .keyDown || type == .keyUp || type == .flagsChanged
-        if isKeyboard && key == 79 { // Physical Caps Lock has been remapped to F18.
-            if type == .keyDown && event.getIntegerValueField(.keyboardEventAutorepeat) == 0 { cycle() }
+        let trigger = capsTrigger.observe(type: type, key: key, flags: event.flags,
+                                          repeating: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
+                                          time: TimeInterval(event.timestamp) / 1_000_000_000)
+        if trigger != .pass {
+            backspaceHold.reset()
+            if trigger == .toggle { cycle() }
             return nil
+        }
+        if isKeyboard && capsTrigger.capturedRawCaps && !IsSecureEventInputEnabled() && event.flags.contains(.maskAlphaShift) {
+            let text = Self.characters(event)
+            let adjusted = CapsToggleTrigger.unlatchedASCII(text, flags: event.flags)
+            if adjusted != text {
+                let units = Array(adjusted.utf16)
+                event.keyboardSetUnicodeString(stringLength: units.count, unicodeString: units)
+            }
+            event.flags.remove(.maskAlphaShift)
+        }
+        if type == .keyDown && key == 51 {
+            let eligible = longBackspaceEnabled && Self.isUnmodifiedBackspace(event.flags) && !IsSecureEventInputEnabled() &&
+                NSWorkspace.shared.frontmostApplication.map { !isExcluded($0) } == true
+            if backspaceHold.wordDeletion(repeating: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
+                                          at: TimeInterval(event.timestamp) / 1_000_000_000, eligible: eligible) {
+                // Option+Backspace is handled by the app's normal editing path.
+                // Native Auto first commits its marked word and passes it on.
+                // No delayed queue/replay: releasing the key ends deletion.
+                event.flags.insert(.maskAlternate)
+            }
+        } else if type == .keyDown || type == .flagsChanged || (type == .keyUp && key == 51) || !isKeyboard {
+            backspaceHold.reset()
         }
         // The input method receives the original event, including Option and
         // command shortcuts. Never run AX replacement/event replay alongside it.

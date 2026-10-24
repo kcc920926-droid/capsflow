@@ -53,6 +53,11 @@ final class CompositionSession {
     var onChange: (() -> Void)?
     init(language: LanguageEngine) { self.language = language }
 
+    static func validInsertionRange(_ range: NSRange) -> Bool {
+        range.location >= 0 && range.location != NSNotFound && range.length >= 0 &&
+            range.length != NSNotFound && range.location <= Int.max - range.length
+    }
+
     var candidate: String? {
         guard !composition.isEmpty, !composition.englishOverride else { return nil }
         return composition.decision(using: language).englishCandidate
@@ -76,6 +81,9 @@ final class CompositionSession {
             return
         }
         let selected = client.selection, marked = client.marked
+        guard Self.validInsertionRange(marked) || Self.validInsertionRange(selected) else {
+            reset(); return
+        }
         let start = marked.location != NSNotFound ? marked.location : selected.location
         let raw = composition.raw
         let result = composition.finish(using: language)
@@ -146,6 +154,9 @@ final class CompositionSession {
                 needsEmptyDocumentCheck = true; optionDown = nil; optionAlone = false
                 onChange?(); return false
             }
+            guard Self.validInsertionRange(client.marked) || Self.validInsertionRange(client.selection) else {
+                reset(); return false
+            }
             composition.backspace()
             // Empty commit and empty composition are not interchangeable in
             // Chromium editors. Explicitly clear the composition in this key
@@ -168,6 +179,11 @@ final class CompositionSession {
         }
         let text = stroke.text
         guard !text.isEmpty else { return false }
+        // Some hosts keep an IMK session while no editable client/range exists.
+        // Never consume text and pretend a failed marked-text write succeeded.
+        guard Self.validInsertionRange(client.marked) || Self.validInsertionRange(client.selection) else {
+            reset(); return false
+        }
         if text == " " || stroke.key == 49 {
             guard !composition.isEmpty else { return false }
             commit(to: client, delimiter: " "); return true

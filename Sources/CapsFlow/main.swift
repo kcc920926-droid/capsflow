@@ -9,6 +9,7 @@ if args.contains("--native-input-method-ready") {
     exit(ready ? 0 : 1)
 }
 if args.contains("--runtime-checks") { runRuntimeChecks(); exit(0) }
+if args.contains("--headless-mapper-check") { exit(CapsKeyMapper.checkHeadlessStartup() ? 0 : 1) }
 if args.count >= 4 && args[1] == "--watch-parent", let pid = Int32(args[2]) {
     CapsKeyMapper.watch(parent: pid, session: args[3]); exit(0)
 }
@@ -45,6 +46,7 @@ if args.contains("--diagnose") {
         "postEvents": CGPreflightPostEventAccess(), "inputSources": InputSources.enabledIDs,
         "currentInputSource": InputSources.currentID,
         "capsLockBehavior": CapsLockBehavior.restored(UserDefaults.standard.string(forKey: CapsLockBehavior.preferenceKey)).rawValue,
+        "longBackspaceEnabled": UserDefaults.standard.object(forKey: BackspaceHold.preferenceKey) as? Bool ?? true,
         "englishWords": language.lexiconCounts.english, "koreanWords": language.lexiconCounts.korean,
         "recoveryFilePresent": FileManager.default.fileExists(atPath: CapsKeyMapper.recoveryURL.path)
     ]

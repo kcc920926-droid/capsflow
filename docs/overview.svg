@@ -21,7 +21,7 @@
   <text class="h" x="42" y="282">2. 키와 글자가 지나가는 길</text>
   <rect class="card" x="48" y="305" width="180" height="69" rx="10"/>
   <text class="h" x="66" y="333">키보드 Caps Lock</text>
-  <text class="muted small" x="66" y="355">실행 중에만 F18로 매핑</text>
+  <text class="muted small" x="66" y="355">로컬 F18 / 원격 Caps·단축키</text>
   <path class="line" d="M230 340 H285"/>
   <rect class="card" x="290" y="305" width="374" height="69" rx="10"/>
   <text class="h" x="308" y="333">메뉴 앱 · 다음 모드 선택</text>
@@ -59,6 +59,6 @@
   <rect class="card" x="494" y="804" width="218" height="292" rx="14"/>
   <text class="h" x="510" y="834">처음 쓸 때 순서</text>
   <text x="510" y="865"><tspan x="510">① 설정창 / 메뉴 열기</tspan><tspan x="510" dy="22" class="muted small">Caps Lock 동작 선택</tspan><tspan x="510" dy="39">② Speed 또는 3단계</tspan><tspan x="510" dy="22" class="muted small">선택만으로 현재 모드는 안 바뀜</tspan><tspan x="510" dy="39">③ 실제 키로 눌러보기</tspan><tspan x="510" dy="22" class="muted small">자동 + Speed라면 다음 Caps는 EN</tspan></text>
-  <text class="small muted" x="28" y="1122">실선 = 소스에 구현된 경로 · 자동 입력기 0.2.2: 이 Mac의 실제 Codex에서 확인</text>
-  <text class="small muted" x="28" y="1145">Speed는 새 옵션입니다. 구현·검사·실제 키 확인 상태는 VALIDATION.md를 따릅니다.</text>
+  <text class="small muted" x="28" y="1122">실선 = 구현 경로 · 메뉴 0.3.2 / 입력기 0.2.3 · 이 Mac의 실제 Codex에서 확인</text>
+  <text class="small muted" x="28" y="1145">3단계·Speed·긴 Backspace의 사용자 확인 범위와 한계: VALIDATION.md</text>
 </svg>

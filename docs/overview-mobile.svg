@@ -20,7 +20,7 @@
   <path class="line" d="M180 320 V343"/>
   <rect class="card" x="24" y="350" width="312" height="96" rx="12"/>
   <text class="h" x="40" y="377">2. Caps Lock → 메뉴 앱</text>
-  <text x="40" y="402">실행 중 Caps를 F18로 받아 다음 모드 선택</text>
+  <text x="40" y="402">로컬 F18 / 원격 Caps·단축키로 모드 선택</text>
   <text class="small muted" x="40" y="425">선택한 모드에 맞는 macOS 입력 소스를 켬</text>
   <path class="line" d="M100 448 V463 H12 V525 H22"/>
   <path class="line" d="M260 448 V463 H348 V665 H338"/>
@@ -54,5 +54,5 @@
   <rect class="card" x="20" y="1385" width="320" height="158" rx="14"/>
   <text class="h" x="36" y="1414">처음 쓸 때 순서</text>
   <text x="36" y="1443"><tspan x="36">① 설정창 / 메뉴에서 Caps Lock 동작 선택</tspan><tspan x="36" dy="27">② Speed 또는 3단계 · 현재 모드는 유지</tspan><tspan x="36" dy="27">③ 실제 키 확인 · 자동 + Speed의 다음은 EN</tspan></text>
-  <text class="small muted" x="20" y="1570"><tspan x="20">실선 = 코드 경로 · 자동 0.2.2 실사용 확인</tspan><tspan x="20" dy="21">Speed 구현/검사/실키 상태: VALIDATION.md</tspan><tspan x="20" dy="21">그림은 외부 서비스나 모델에 연결하지 않습니다.</tspan></text>
+  <text class="small muted" x="20" y="1570"><tspan x="20">실선 = 구현 경로 · 메뉴 0.3.2 / 입력기 0.2.3</tspan><tspan x="20" dy="21">3단계·Speed·긴 삭제 확인: VALIDATION.md</tspan><tspan x="20" dy="21">그림은 외부 서비스나 모델에 연결하지 않습니다.</tspan></text>
 </svg>

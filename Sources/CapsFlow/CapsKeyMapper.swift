@@ -17,10 +17,37 @@ final class CapsKeyMapper {
     static let recoveryURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("CapsFlow/caps-recovery.json")
     private let client = IOHIDEventSystemClientCreateSimpleClient(kCFAllocatorDefault)
+    private let serviceProvider: (IOHIDEventSystemClient) -> [IOHIDServiceClient]
     private var saved: Saved?
     private var watchdog: Process?
     private var timer: Timer?
     private(set) var mappedCount = 0
+    var onCountChanged: (() -> Void)?
+
+    init(serviceProvider: @escaping (IOHIDEventSystemClient) -> [IOHIDServiceClient] = CapsKeyMapper.services) {
+        self.serviceProvider = serviceProvider
+    }
+
+    /// Isolated empty-device regression. Never touches keyboard properties or
+    /// input sources, and refuses to overwrite an active recovery session.
+    static func checkHeadlessStartup() -> Bool {
+        guard !FileManager.default.fileExists(atPath: recoveryURL.path) else {
+            fputs("Quit CapsFlow before running the headless mapper check.\n", stderr); return false
+        }
+        let mapper = CapsKeyMapper(serviceProvider: { _ in [] })
+        do { try mapper.start() }
+        catch { mapper.stop(); fputs("Headless start failed: \(error)\n", stderr); return false }
+        guard mapper.mappedCount == 0, mapper.timer != nil, mapper.watchdog?.isRunning == true,
+              FileManager.default.fileExists(atPath: recoveryURL.path) else {
+            mapper.stop(); return false
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(3.1))
+        let stable = mapper.mappedCount == 0 && mapper.watchdog?.isRunning == true
+        mapper.stop()
+        let clean = !FileManager.default.fileExists(atPath: recoveryURL.path)
+        print("Headless mapper: empty-device start, hot-plug timer, watchdog, cleanup \(stable && clean ? "passed" : "failed") (simulated device list; no key injection)")
+        return stable && clean
+    }
 
     static func services(_ client: IOHIDEventSystemClient) -> [IOHIDServiceClient] {
         (IOHIDEventSystemClientCopyServices(client) as? [IOHIDServiceClient] ?? [])
@@ -50,16 +77,14 @@ final class CapsKeyMapper {
         try child.run()
         watchdog = child
         refresh()
-        if mappedCount == 0 {
-            stop()
-            throw NSError(domain: "CapsFlow", code: 1, userInfo: [NSLocalizedDescriptionKey: "Caps Lock 매핑을 적용할 키보드를 찾지 못했습니다."])
-        }
+        // A headless/remote Mac may have no local HID keyboard. Keep the tap
+        // alive for remote Caps/shortcuts and keep watching for hot-plug devices.
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in self?.refresh() }
     }
     private func refresh() {
         guard saved != nil else { return }
         var count = 0
-        for service in Self.services(client) {
+        for service in serviceProvider(client) {
             let key = Self.registryID(service)
             let current = Self.mappings(service)
             if saved!.services[key] == nil {
@@ -71,7 +96,7 @@ final class CapsKeyMapper {
             }
             if Self.mappings(service).contains(where: { $0[Self.src] == Self.caps && $0[Self.dst] == Self.f18 }) { count += 1 }
         }
-        mappedCount = count
+        if mappedCount != count { mappedCount = count; onCountChanged?() }
     }
     func stop() {
         timer?.invalidate(); timer = nil
