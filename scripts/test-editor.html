@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><title>CapsFlow 입력 호환성 검사</title>
+<style>body{font:18px system-ui;max-width:720px;margin:40px auto;padding:16px}textarea,[contenteditable]{display:block;min-height:120px;border:1px solid;padding:12px;width:90%;margin-bottom:24px}</style>
+<h1>CapsFlow 로컬 입력 검사</h1>
+<p>자동 모드에서 dkssud + 스페이스 → 안녕. 입력은 전송·저장하지 않습니다.</p>
+<label for="plain">일반 입력란</label><textarea id="plain" spellcheck="false"></textarea>
+<div id="rich" contenteditable="true" role="textbox" aria-label="리치 텍스트 입력란" spellcheck="false"></div>
+<label for="secure">보안 입력란 — 자동 변환하지 않아야 함</label><input id="secure" type="password" autocomplete="off">
+</html>

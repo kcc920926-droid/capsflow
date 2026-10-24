@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="1650" viewBox="0 0 360 1650" role="img" aria-labelledby="cfm-title cfm-desc">
+  <title id="cfm-title">CapsFlow를 쉽게 이해하기: 모바일</title>
+  <desc id="cfm-desc">Caps Lock은 리모컨 채널 버튼처럼 동작합니다. Speed는 한과 EN, 3단계는 자동까지 순환합니다. 메뉴 앱, 기본 입력기와 CapsFlow 입력기, 설정 저장과 임시 판단의 경계, 주의점과 첫 사용 순서를 보여줍니다.</desc>
+  <style>
+    text{font-family:"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;fill:#192638;font-size:13px}.bg{fill:#f5f7fb}.card{fill:#fff;stroke:#d8e0eb}.muted{fill:#4e6078}.title{font-size:23px;font-weight:750}.h{font-size:17px;font-weight:700}.small{font-size:12px}.speed{fill:#e7f1ff;stroke:#9fc2ef}.auto{fill:#e6f5ee;stroke:#a4d2bb}.warn{fill:#fff3df;stroke:#e5c38b}.line{fill:none;stroke:#61718a;stroke-width:2;marker-end:url(#cfm-arrow)}
+    @media(prefers-color-scheme:dark){text{fill:#e7edf8}.bg{fill:#101821}.card{fill:#182330;stroke:#3b4c62}.muted{fill:#b2c2d8}.speed{fill:#142f4b;stroke:#497daf}.auto{fill:#15382c;stroke:#4d866d}.warn{fill:#3d2b15;stroke:#9e7741}.line{stroke:#a4b7d1}}
+  </style>
+  <defs><marker id="cfm-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#7185a0"/></marker></defs>
+  <rect class="bg" width="360" height="1650" rx="16"/>
+  <text class="title" x="20" y="39">Caps Lock, 두 가지 길</text>
+  <text class="muted" x="20" y="65"><tspan x="20">리모컨 채널 버튼처럼,</tspan><tspan x="20" dy="21">두 채널만 빠르게 또는 자동까지 세 채널.</tspan></text>
+  <rect class="card" x="20" y="106" width="320" height="212" rx="14"/>
+  <text class="h" x="36" y="134">1. Caps Lock 동작 선택</text>
+  <rect class="speed" x="32" y="151" width="296" height="68" rx="9"/>
+  <text class="h" x="46" y="177">Speed · 한 ↔ EN</text>
+  <text x="46" y="201">자동을 건너뛰는 수동 토글</text>
+  <rect class="auto" x="32" y="230" width="296" height="68" rx="9"/>
+  <text class="h" x="46" y="256">3단계 · 한 → EN → 자동</text>
+  <text x="46" y="280">기존 방식 · 설정이 없으면 이 경로</text>
+  <path class="line" d="M180 320 V343"/>
+  <rect class="card" x="24" y="350" width="312" height="96" rx="12"/>
+  <text class="h" x="40" y="377">2. Caps Lock → 메뉴 앱</text>
+  <text x="40" y="402">실행 중 Caps를 F18로 받아 다음 모드 선택</text>
+  <text class="small muted" x="40" y="425">선택한 모드에 맞는 macOS 입력 소스를 켬</text>
+  <path class="line" d="M100 448 V463 H12 V525 H22"/>
+  <path class="line" d="M260 448 V463 H348 V665 H338"/>
+  <rect class="speed" x="24" y="484" width="312" height="112" rx="12"/>
+  <text class="h" x="40" y="512">한 / EN · macOS 기본 입력기</text>
+  <text x="40" y="537">한은 두벌식, EN은 ABC</text>
+  <text class="small muted" x="40" y="560">Speed Caps는 이 둘만 순환합니다.</text>
+  <text class="small muted" x="40" y="580">이 경로는 자동 언어 판정을 하지 않습니다.</text>
+  <rect class="auto" x="24" y="622" width="312" height="112" rx="12"/>
+  <text class="h" x="40" y="650">자동 · CapsFlow 입력기</text>
+  <text x="40" y="675">한국어 조합 → 명확한 영어만 복원</text>
+  <text class="small muted" x="40" y="698">Speed 설정에서도 메뉴로 직접 선택 가능</text>
+  <text class="small muted" x="40" y="718">입력과 판단은 이 Mac 안에서 처리합니다.</text>
+  <path class="line" d="M24 574 H8 V794 H78"/>
+  <path class="line" d="M180 736 V766"/>
+  <rect class="card" x="86" y="774" width="250" height="64" rx="12"/>
+  <text class="h" x="102" y="801">현재 앱 입력창</text>
+  <text class="small muted" x="102" y="823">Codex, 편집기 등</text>
+  <rect class="card" x="20" y="860" width="320" height="142" rx="14"/>
+  <text class="h" x="36" y="888">3. 설정 보관함과 임시 메모</text>
+  <text x="36" y="916">보관: 전환 방식 / 모드 · UserDefaults</text>
+  <text class="small muted" x="36" y="938">재실행해도 설정은 유지합니다.</text>
+  <text x="36" y="965">임시: 현재 조합 / 최근 언어 / 타속</text>
+  <text class="small muted" x="36" y="986">빈 입력란 재입력 시 초기화 · 원문 로그 없음</text>
+  <rect class="card" x="20" y="1022" width="320" height="148" rx="14"/>
+  <text class="h" x="36" y="1051">잘 지키는 경계</text>
+  <text x="36" y="1080"><tspan x="36">① Speed는 기본 두벌식·ABC를 사용</tspan><tspan x="36" dy="27">② 수동과 자동 분리 · 자동은 직접 선택 가능</tspan><tspan x="36" dy="27">③ 종료·키 연결 실패 시 Caps 매핑 복구</tspan></text>
+  <rect class="warn" x="20" y="1190" width="320" height="175" rx="14"/>
+  <text class="h" x="36" y="1219">알아둘 한계</text>
+  <text x="36" y="1248"><tspan x="36">① 키 권한 필요 → 없으면 Caps 매핑 안 함</tspan><tspan x="36" dy="31">② 자동 입력기 → 새 Mac에서 등록·추가 필요</tspan><tspan x="36" dy="31">③ 영어는 규칙 기반 → 코드·긴 영문은 EN</tspan></text>
+  <rect class="card" x="20" y="1385" width="320" height="158" rx="14"/>
+  <text class="h" x="36" y="1414">처음 쓸 때 순서</text>
+  <text x="36" y="1443"><tspan x="36">① 설정창 / 메뉴에서 Caps Lock 동작 선택</tspan><tspan x="36" dy="27">② Speed 또는 3단계 · 현재 모드는 유지</tspan><tspan x="36" dy="27">③ 실제 키 확인 · 자동 + Speed의 다음은 EN</tspan></text>
+  <text class="small muted" x="20" y="1570"><tspan x="20">실선 = 코드 경로 · 자동 0.2.2 실사용 확인</tspan><tspan x="20" dy="21">Speed 구현/검사/실키 상태: VALIDATION.md</tspan><tspan x="20" dy="21">그림은 외부 서비스나 모델에 연결하지 않습니다.</tspan></text>
+</svg>

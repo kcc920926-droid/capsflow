@@ -1,0 +1,8 @@
+FrequencyWords word-frequency data
+Author: Hermit Dave; generated from OpenSubtitles 2018.
+Source: https://github.com/hermitdave/FrequencyWords
+Pinned revision: 525f9b560de45753a5ea01069454e72e9aa541c6
+Files: content/2018/en/en_50k.txt and content/2018/ko/ko_50k.txt
+License for these content files: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+The word list files are unmodified. The app code is independent of these data files.
