@@ -18,6 +18,11 @@
   [개발 프리릴리스](https://github.com/kcc920926-droid/capsflow/releases/tag/v0.3.4)에 설치 ZIP,
   SHA-256 파일, 서명 JSON 3개를 공개함. GitHub 자산 digest가 로컬 SHA-256과 일치함.
   인증 없는 공개 주소로 ZIP·서명 JSON을 다시 받아 원본과 바이트 단위 일치 및 ZIP 무결성을 확인함.
+- ZIP 공개 검증 뒤 서명 JSON 원본을 `updates/latest-arm64.json`에 그대로 게시함.
+  공개 raw 응답도 생성 원본과 바이트 단위로 일치함. 배포 앱의 `--verify-remote-update`가
+  **공개 GitHub 피드 → 서명된 v0.3.4 → ZIP 다운로드·해시 → 압축/앱 검사 → Install.command**까지 통과함.
+  이 읽기 전용 점검은 설치기를 실행하지 않으며 현재 앱·입력기·키 권한을 교체하지 않음.
+  기존 v0.3.3과 v0.3.2 Draft 릴리스는 변경하지 않음.
 
 ## 2026-10-24 · 0.3.4 / 입력기 0.2.4 전환 방식 3종 (로컬 설치·3칸 토글·권한 복원 완료)
 
