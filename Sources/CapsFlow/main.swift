@@ -3,6 +3,9 @@ import ApplicationServices
 import InputCore
 
 let args = CommandLine.arguments
+if args.contains("--verify-update-bundle") || args.contains("--verify-remote-update") {
+    exit(runUpdateVerification(arguments: args))
+}
 if args.contains("--native-input-method-ready") {
     let ready = InputSources.enabledIDs.contains(InputSources.automaticID)
     print(ready ? "CapsFlow native input method ready." : "Native input method is not enabled; keep the current utility installed.")

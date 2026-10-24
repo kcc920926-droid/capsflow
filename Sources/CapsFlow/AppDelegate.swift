@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var menuApp: NSRunningApplication?
     private let smokeTest: Bool
     private let suggestionPanel = SuggestionPanel()
+    private let updater = UpdateController()
 
     init(smokeTest: Bool = false) { self.smokeTest = smokeTest; super.init() }
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,6 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         buildWindow()
         refresh()
         if smokeTest { runSmokeTest(); return }
+        updater.onChange = { [weak self] in self?.refresh() }
+        updater.start()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -52,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if AXIsProcessTrusted() { _ = engine.start() }
     }
-    func applicationWillTerminate(_ notification: Notification) { suggestionPanel.hide(); engine.stop() }
+    func applicationWillTerminate(_ notification: Notification) { updater.stop(); suggestionPanel.hide(); engine.stop() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { openWindow(); return true }
 
@@ -140,7 +143,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         loginButton = NSButton(checkboxWithTitle: "로그인 시 CapsFlow 실행", target: self, action: #selector(toggleLogin))
         loginButton.state = SMAppService.mainApp.status == .enabled ? .on : .off
         stack.addArrangedSubview(loginButton)
-        stack.addArrangedSubview(label("로컬 처리 · 입력 기록 저장 없음 · 네트워크 전송 없음\n자동은 CapsFlow 한국어 우선 입력기, 한글은 macOS 두벌식, EN은 ABC를 사용합니다. 타속은 간격 통계만 메모리에 유지합니다.", size: 11, color: .tertiaryLabelColor))
+        stack.addArrangedSubview(label("입력은 로컬 처리 · 입력 기록 저장 없음 · 입력 내용 전송 없음\n메뉴의 업데이트 설정에서 GitHub 버전 자동 확인·다운로드를 끌 수 있습니다. 자동 입력은 CapsFlow 입력기, 한글은 두벌식, EN은 ABC를 사용합니다.", size: 11, color: .tertiaryLabelColor))
         for view in stack.arrangedSubviews where view is NSTextField {
             view.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor).isActive = true
         }
@@ -155,9 +158,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         longBackspaceButton.state = engine.longBackspaceEnabled ? .on : .off
         switchHint.stringValue = engine.capsLockBehavior.hint
         startButton.title = engine.running ? "전역 입력 일시 정지" : "전역 입력 켜기"
-        statusItem.button?.title = (engine.running ? "" : "○ ") + engine.mode.badge
+        statusItem.button?.title = (engine.running ? "" : "○ ") + engine.mode.badge + (updater.available ? " ↑" : "")
         statusItem.button?.font = .systemFont(ofSize: 13, weight: .semibold)
-        statusItem.button?.toolTip = "CapsFlow · " + engine.mode.title + " · " + engine.capsLockBehavior.title
+        statusItem.button?.toolTip = "CapsFlow · " + engine.mode.title + " · " + engine.capsLockBehavior.title + "\n" + updater.status
     }
     private func show(_ decision: Decision) {
         let raw = Int((decision.rawKoreanScore * 100).rounded()), score = Int((decision.koreanScore * 100).rounded())
@@ -204,6 +207,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func selectEnglish() { engine.setMode(.english) }
     @objc private func selectAuto() { engine.setMode(.automatic) }
     @objc private func excludeApp() { if let menuApp { engine.toggleExclusion(for: menuApp) } }
+    @objc private func toggleUpdateChecks() { updater.setChecks(!updater.automaticChecks) }
+    @objc private func toggleUpdateDownloads() { updater.setDownloads(!updater.automaticDownloads) }
+    @objc private func checkUpdate() { updater.performAction() }
+    @objc private func updateSettings() { updater.showSettings() }
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         func add(_ title: String, _ action: Selector, checked: Bool = false) {
@@ -223,6 +230,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             add("\(app.localizedName ?? "현재 앱")에서 자동 변환 제외", #selector(excludeApp), checked: engine.isExcluded(app))
         }
         add("설정 및 키보드 테스트…", #selector(openWindow))
+        menu.addItem(.separator())
+        add("새 버전 자동 확인", #selector(toggleUpdateChecks), checked: updater.automaticChecks)
+        add("새 버전 자동 다운로드", #selector(toggleUpdateDownloads), checked: updater.automaticDownloads)
+        add(updater.actionTitle, #selector(checkUpdate))
+        menu.items.last?.isEnabled = !updater.busy
+        add("업데이트 설정·확인…", #selector(updateSettings))
         menu.addItem(.separator()); add("CapsFlow 종료", #selector(quit))
     }
 

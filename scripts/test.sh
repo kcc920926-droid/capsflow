@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "${0:A:h:h}"
 swift run CoreChecks
+swift run UpdateChecks
 swift build --product CapsFlow
 bin_dir="$(swift build --show-bin-path)"
 "$bin_dir/CapsFlow" --runtime-checks

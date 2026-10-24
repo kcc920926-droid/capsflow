@@ -31,6 +31,13 @@ CapsFlow 간편 설치
 - 설치 상태만 확인하려면 터미널에서 zsh scripts/setup.sh --check를 실행하세요.
 - 앱·설정창을 자동으로 열지 않으려면 zsh scripts/setup.sh --no-open을 실행하세요.
 
-현재 제공되는 앱: 메뉴 앱 0.3.2 / 한국어 우선 입력기 0.2.3
+자동 업데이트 (0.3.3부터)
+- 메뉴 앱 실행 중 6시간마다 GitHub의 서명된 버전 정보를 확인하고 새 버전을 자동 다운로드합니다.
+- 위치: https://raw.githubusercontent.com/kcc920926-droid/capsflow/main/updates/latest-arm64.json
+- 메뉴의 업데이트 설정에서 자동 확인·다운로드를 끌 수 있습니다. 입력 내용은 전송하지 않습니다.
+- 새 버전은 메뉴바의 ↑로 표시하며, 설치는 입력 저장·ABC/두벌식 전환 후 직접 확인해야 합니다.
+- 검증에 실패한 파일은 설치기에 넘기지 않습니다. Apple 공증이나 macOS 권한 승인을 대신하지 않습니다.
+
+현재 제공되는 앱: 메뉴 앱 0.3.3 / 한국어 우선 입력기 0.2.3
 프로젝트: https://github.com/kcc920926-droid/capsflow
 이 ZIP에 실제 사용자 입력이나 개인 설정은 포함하지 않았습니다.

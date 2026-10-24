@@ -2,7 +2,7 @@
 
 Caps Lock으로 한글·영문·자동 입력을 전환하는 macOS 앱입니다. 기본은 **3단계: 한 → EN → 자동**이며, **Speed: 한 ↔ EN**도 선택할 수 있습니다.
 
-[간편 설치 ZIP 다운로드 · Apple Silicon](https://github.com/kcc920926-droid/capsflow/releases/download/v0.3.2/CapsFlow-Installer-0.3.2-arm64.zip) · [빠른 설치](#빠른-설치) · [설치가 막힐 때](#설치가-막힐-때)
+[간편 설치 ZIP 다운로드 · Apple Silicon](https://github.com/kcc920926-droid/capsflow/releases/download/v0.3.3/CapsFlow-Installer-0.3.3-arm64.zip) · [빠른 설치](#빠른-설치) · [자동 업데이트](#자동-업데이트) · [설치가 막힐 때](#설치가-막힐-때)
 
 <picture>
   <source media="(max-width: 480px)" srcset="docs/overview-mobile.svg" />
@@ -13,10 +13,10 @@ Caps Lock으로 한글·영문·자동 입력을 전환하는 macOS 앱입니다
 
 ## 빠른 설치
 
-**[간편 설치 ZIP 받기 — v0.3.2 / Apple Silicon](https://github.com/kcc920926-droid/capsflow/releases/download/v0.3.2/CapsFlow-Installer-0.3.2-arm64.zip)**
-([릴리스 안내·SHA-256](https://github.com/kcc920926-droid/capsflow/releases/tag/v0.3.2))
+**[간편 설치 ZIP 받기 — v0.3.3 / Apple Silicon](https://github.com/kcc920926-droid/capsflow/releases/download/v0.3.3/CapsFlow-Installer-0.3.3-arm64.zip)**
+([릴리스 안내·SHA-256](https://github.com/kcc920926-droid/capsflow/releases/tag/v0.3.3))
 
-메뉴 앱 0.3.2 + 한국어 우선 입력기 0.2.3이 포함된 **개발용 프리릴리스**입니다.
+메뉴 앱 0.3.3 + 한국어 우선 입력기 0.2.3이 포함된 **개발용 프리릴리스**입니다.
 현재 패키지는 Apple Silicon 전용이며, Developer ID 서명·Apple 공증 전입니다.
 
 **압축을 풀고 `Install.command`를 더블클릭하세요.** 빌드가 필요한 경우에는 빌드부터,
@@ -189,7 +189,33 @@ Caps Lock의 기본 동작은 **한 → EN → 자동**입니다. 한·영만 �
 - **잠시 원래 입력 방식으로 돌아가기**: macOS 입력 메뉴에서 **ABC 또는 두벌식**을 선택하고,
   CapsFlow 메뉴 앱을 일시 정지하거나 종료하세요.
 
-## 0.3.2 · 이번 버전에서 확인한 동작
+## 자동 업데이트
+
+**0.3.3부터 메뉴 앱이 GitHub의 고정 위치를 확인합니다.**
+
+[`updates/latest-arm64.json`](https://github.com/kcc920926-droid/capsflow/blob/main/updates/latest-arm64.json)
+(실제 요청: `https://raw.githubusercontent.com/kcc920926-droid/capsflow/main/updates/latest-arm64.json`)
+
+- 앱 실행 중 **6시간마다 자동 확인**, 검증된 새 버전은 **자동 다운로드**합니다. 둘 다 기본 켬이며
+  메뉴의 **새 버전 자동 확인 / 새 버전 자동 다운로드 / 업데이트 설정·확인…**에서 바꿀 수 있습니다.
+- 실패하면 재시도 간격을 **30분 → 1시간 → 2시간 → 4시간 → 8시간 → 16시간 → 최대 하루**로 늘립니다.
+  성공하면 다시 6시간으로 돌아갑니다. 백그라운드 실패는 로그인 페이지나 알림 창을 반복해서 열지 않습니다.
+- 새 버전이 있으면 메뉴바 모드 표시 옆에 **↑**가 붙습니다. 다운로드가 준비되면 메뉴의
+  **v버전 업데이트 설치…**에서 설치 파일을 열 수 있습니다. 아직 받지 않았다면 같은 메뉴가 다운로드를 시작합니다.
+- **설치는 무인 강제가 아닙니다.** 입력 내용을 저장하고 ABC·두벌식으로 전환한 뒤 설치 파일 열기를
+  확인해야 합니다. 기존 간편 설치기가 입력 저장을 다시 확인하며, macOS 권한 재승인은 직접 해야 합니다.
+- 발행자 **Ed25519 서명**, ZIP 크기·**SHA-256**, 허용된 GitHub 배포 주소, CPU·최소 OS·앱 버전,
+  압축 경로·심볼릭 링크·해제 크기, 앱 서명을 검사합니다. 검증 실패나 다운그레이드는 거부합니다.
+  발행자 서명은 Apple Developer ID 서명·공증과는 별개입니다.
+- 확인·다운로드는 GitHub에 HTTPS로 연결합니다. **입력 내용·현재 문서·앱 문맥·타속·키 입력은 전송하지 않습니다.**
+  자동 확인을 끄면 주기적 연결을 중단하며 수동 확인은 계속 사용할 수 있습니다. 자동 다운로드 설정을 끄면
+  이후 자동 다운로드를 시작하지 않습니다. 이미 시작한 다운로드는 완료될 수 있습니다.
+
+0.3.2 이하에는 이 기능이 없으므로 **0.3.3 설치 ZIP으로 한 번 업데이트**해야 시작됩니다.
+서명 개인키는 배포자 Mac의 로그인 키체인에만 보관하며, 앱·저장소에는 공개키만 들어갑니다.
+[업데이트 배포·키 보관 안내](docs/UPDATES.md)
+
+## 0.3.2 · 입력 동작 검증 기준
 
 - **기본 3단계**: Caps Lock으로 `한 → EN → 자동` 순환. 설정에서 Speed를 고르면 `한 ↔ EN`만 토글합니다. 이전에 고른 설정은 재실행해도 유지됩니다.
 - **원격 전환**: Caps Lock 또는 `⌃⇧Space`로 같은 전환 정책을 사용합니다. 직접 연결된 키보드가 없어도 메뉴 앱을 유지합니다.
@@ -201,7 +227,8 @@ Caps Lock의 기본 동작은 **한 → EN → 자동**입니다. 한·영만 �
 
 ## 현재 버전과 원격 접속 시 주의
 
-현재 버전은 메뉴 앱 **0.3.2** + 네이티브 입력기 **0.2.3**입니다.
+현재 버전은 메뉴 앱 **0.3.3** + 네이티브 입력기 **0.2.3**입니다. 0.3.3은 자동 업데이트 확인·다운로드를
+추가했으며 입력 동작은 아래 0.3.2/입력기 0.2.3의 실제 사용자 검증 기록과 구분합니다.
 0.2.3은 유효한 입력 위치가 없는 경우 원래 키를 통과시키는 보호와 연결 상태 진단을 추가했습니다.
 진단은 원문·키코드·문서 범위 없이 프로세스 ID, Codex/기타/알 수 없음 구분, 처리 단계·누적 횟수를
 `~/Library/Application Support/CapsFlow/ime-health.json` 한 파일에 덮어씁니다(권한 0600). 원격 전송은 없습니다.

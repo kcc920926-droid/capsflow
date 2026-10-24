@@ -54,5 +54,5 @@
   <rect class="card" x="20" y="1385" width="320" height="158" rx="14"/>
   <text class="h" x="36" y="1414">처음 쓸 때 순서</text>
   <text x="36" y="1443"><tspan x="36">① 설정창 / 메뉴에서 Caps Lock 동작 선택</tspan><tspan x="36" dy="27">② Speed 또는 3단계 · 현재 모드는 유지</tspan><tspan x="36" dy="27">③ 실제 키 확인 · 자동 + Speed의 다음은 EN</tspan></text>
-  <text class="small muted" x="20" y="1570"><tspan x="20">실선 = 구현 경로 · 메뉴 0.3.2 / 입력기 0.2.3</tspan><tspan x="20" dy="21">3단계·Speed·긴 삭제 확인: VALIDATION.md</tspan><tspan x="20" dy="21">그림은 외부 서비스나 모델에 연결하지 않습니다.</tspan></text>
+  <text class="small muted" x="20" y="1570"><tspan x="20">입력 검증: 메뉴 0.3.2 / 입력기 0.2.3</tspan><tspan x="20" dy="21">3단계·Speed·긴 삭제 확인: VALIDATION.md</tspan><tspan x="20" dy="21">업데이트 확인만 GitHub에 별도 연결합니다.</tspan></text>
 </svg>
