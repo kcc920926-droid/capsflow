@@ -12,8 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var stateLabel = NSTextField(labelWithString: "")
     private var detailLabel = NSTextField(wrappingLabelWithString: "아래에서 입력을 시험해보세요.")
     private var modeControl: NSSegmentedControl!
-    private var capsBehaviorControl: NSPopUpButton!
+    private var capsBehaviorControl: NSSegmentedControl!
+    private let behaviorOptions: [CapsLockBehavior] = [.speed, .rightAlt, .cycle]
     private var switchHint = NSTextField(labelWithString: "")
+    private var candidateHint = NSTextField(wrappingLabelWithString: "")
     private var startButton: NSButton!
     private var loginButton: NSButton!
     private var longBackspaceButton: NSButton!
@@ -98,20 +100,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         modeControl.segmentStyle = .rounded; modeControl.controlSize = .large
         for index in 0..<3 { modeControl.setWidth(150, forSegment: index) }
         stack.addArrangedSubview(modeControl)
-        capsBehaviorControl = NSPopUpButton(frame: .zero, pullsDown: false)
-        capsBehaviorControl.addItems(withTitles: CapsLockBehavior.allCases.map(\.title))
-        capsBehaviorControl.target = self; capsBehaviorControl.action = #selector(changeCapsBehavior)
+        capsBehaviorControl = NSSegmentedControl(labels: ["Caps Lock 2단계", "오른쪽 Alt 2단계", "Caps Lock 3단계"],
+                                                trackingMode: .selectOne, target: self, action: #selector(changeCapsBehavior))
+        capsBehaviorControl.segmentStyle = .capsule; capsBehaviorControl.controlSize = .large
+        for index in behaviorOptions.indices {
+            capsBehaviorControl.setWidth(170, forSegment: index)
+            capsBehaviorControl.setToolTip(behaviorOptions[index].title, forSegment: index)
+        }
+        capsBehaviorControl.setAccessibilityLabel("한/영 전환 방식")
         capsBehaviorControl.setAccessibilityIdentifier("caps-lock-behavior")
-        stack.addArrangedSubview(row([label("Caps Lock 동작", size: 13, weight: .medium), capsBehaviorControl]))
+        stack.addArrangedSubview(row([label("한/영 전환 방식", size: 13, weight: .medium), capsBehaviorControl]))
         let nextMode = NSButton(title: "다음 입력 모드로 전환 · ⌃⇧Space", target: self, action: #selector(nextInputMode))
         nextMode.setAccessibilityIdentifier("next-input-mode")
         stack.addArrangedSubview(nextMode)
         longBackspaceButton = NSButton(checkboxWithTitle: "Backspace를 1초 이상 누르면 어절 단위 삭제", target: self, action: #selector(toggleLongBackspace))
         longBackspaceButton.setAccessibilityIdentifier("long-backspace")
         stack.addArrangedSubview(longBackspaceButton)
-        stack.addArrangedSubview(label("Speed는 Caps Lock 순환에서만 자동을 건너뜁니다. 위 모드 버튼으로 자동을 직접 선택할 수 있습니다.", size: 12, color: .secondaryLabelColor))
-        let instructions = label("자동 모드: 한국어 기본 조합 · 명확한 영어만 공백·구두점에서 영어로 확정\n오른쪽 ⌥ / ⌘⌥Z: 조합 중 한·영 선택 · ⌘⌥Z: 선택 문장 자판 변환 / 직전 단어 뒤집기", size: 13, color: .secondaryLabelColor)
-        stack.addArrangedSubview(instructions)
+        stack.addArrangedSubview(label("2단계는 한 ↔ EN 전환입니다. 자동은 위 버튼으로 직접 선택할 수 있고, 다음 전환은 EN입니다.", size: 12, color: .secondaryLabelColor))
+        candidateHint.font = .systemFont(ofSize: 13); candidateHint.textColor = .secondaryLabelColor
+        stack.addArrangedSubview(candidateHint)
         let preview = NSButton(title: "추천 미리보기", target: self, action: #selector(previewSuggestion))
         preview.bezelStyle = .rounded
         lookupLabel.font = .systemFont(ofSize: 10)
@@ -154,9 +161,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         stateLabel.stringValue = engine.running ? engine.status : (AXIsProcessTrusted() ? engine.status : "● 접근성 권한 대기 · 테스트창 사용 가능")
         stateLabel.textColor = engine.running ? .systemGreen : .systemOrange
         modeControl.selectedSegment = engine.mode.rawValue
-        capsBehaviorControl.selectItem(withTitle: engine.capsLockBehavior.title)
+        capsBehaviorControl.selectedSegment = behaviorOptions.firstIndex(of: engine.capsLockBehavior) ?? 2
         longBackspaceButton.state = engine.longBackspaceEnabled ? .on : .off
         switchHint.stringValue = engine.capsLockBehavior.hint
+        let candidateKeys = engine.capsLockBehavior.usesRightOptionForCandidate ? "오른쪽 ⌥ / ⌘⌥Z" : "⌘⌥Z (오른쪽 Alt는 한/영 전환 전용)"
+        candidateHint.stringValue = "자동 모드: 한국어 기본 조합 · 명확한 영어만 공백·구두점에서 영어로 확정\n" + candidateKeys + ": 조합 중 한·영 선택 · ⌘⌥Z: 선택 문장 자판 변환"
         startButton.title = engine.running ? "전역 입력 일시 정지" : "전역 입력 켜기"
         statusItem.button?.title = (engine.running ? "" : "○ ") + engine.mode.badge + (updater.available ? " ↑" : "")
         statusItem.button?.font = .systemFont(ofSize: 13, weight: .semibold)
@@ -168,12 +177,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc private func changeMode() { engine.setMode(InputMode(rawValue: modeControl.selectedSegment)!); refresh() }
     @objc private func changeCapsBehavior() {
-        guard let title = capsBehaviorControl.selectedItem?.title,
-              let value = CapsLockBehavior.allCases.first(where: { $0.title == title }) else { return }
-        engine.setCapsLockBehavior(value)
+        let index = capsBehaviorControl.selectedSegment
+        guard behaviorOptions.indices.contains(index) else { return }
+        engine.setCapsLockBehavior(behaviorOptions[index])
     }
     @objc private func useCycleBehavior() { engine.setCapsLockBehavior(.cycle) }
     @objc private func useSpeedBehavior() { engine.setCapsLockBehavior(.speed) }
+    @objc private func useRightAltBehavior() { engine.setCapsLockBehavior(.rightAlt) }
     @objc private func nextInputMode() { engine.cycle() }
     @objc private func toggleLongBackspace() { engine.setLongBackspaceEnabled(longBackspaceButton.state == .on) }
     @objc private func previewSuggestion() {
@@ -221,8 +231,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         add("한/영 자동", #selector(selectAuto), checked: engine.mode == .automatic)
         add("다음 입력 모드로 전환 · ⌃⇧Space", #selector(nextInputMode))
         menu.addItem(.separator())
-        add("Caps Lock · " + CapsLockBehavior.cycle.title, #selector(useCycleBehavior), checked: engine.capsLockBehavior == .cycle)
-        add("Caps Lock · " + CapsLockBehavior.speed.title, #selector(useSpeedBehavior), checked: engine.capsLockBehavior == .speed)
+        add(CapsLockBehavior.cycle.title, #selector(useCycleBehavior), checked: engine.capsLockBehavior == .cycle)
+        add(CapsLockBehavior.speed.title, #selector(useSpeedBehavior), checked: engine.capsLockBehavior == .speed)
+        add(CapsLockBehavior.rightAlt.title, #selector(useRightAltBehavior), checked: engine.capsLockBehavior == .rightAlt)
         menu.addItem(.separator())
         add(engine.running ? "일시 정지 / Caps Lock 복구" : "전역 입력 켜기", #selector(toggleRunning))
         menuApp = NSWorkspace.shared.frontmostApplication

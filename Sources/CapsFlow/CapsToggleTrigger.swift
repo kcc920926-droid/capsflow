@@ -18,7 +18,7 @@ struct CapsToggleTrigger {
     mutating func releaseHeldKeys() { mappedDown = false; rawDown = false; shortcutDown = false }
 
     mutating func observe(type: CGEventType, key: Int64, flags: CGEventFlags,
-                          repeating: Bool, time: TimeInterval) -> Result {
+                          repeating: Bool, time: TimeInterval, captureCaps: Bool = true) -> Result {
         guard type == .keyDown || type == .keyUp || type == .flagsChanged else { return .pass }
         // Ctrl+Shift+Space is a remote fallback, not text conversion.
         let modifiers = flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift, .maskSecondaryFn])
@@ -29,6 +29,7 @@ struct CapsToggleTrigger {
                 shortcutDown = true; return .toggle
             }
         }
+        guard captureCaps else { return .pass }
         if key == 79 {
             if type == .keyUp { mappedDown = false; return .consume }
             guard type == .keyDown, !repeating, !mappedDown else { return .consume }

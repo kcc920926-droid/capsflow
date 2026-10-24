@@ -65,6 +65,13 @@ final class CapsFlowInputController: IMKInputController {
     private var active = false
     private var passthrough = false
     private var markedAttributes: [NSAttributedString.Key: Any] = [:]
+    private static let menuDefaults = UserDefaults(suiteName: "local.capsflow.app")
+    private static var optionSelectsCandidate: Bool {
+        // Only modifier events/preview refreshes query this shared setting;
+        // ordinary character composition is unchanged and remains local.
+        menuDefaults?.synchronize()
+        return CapsLockBehavior.restored(menuDefaults?.string(forKey: CapsLockBehavior.preferenceKey)).usesRightOptionForCandidate
+    }
 
     override func activateServer(_ sender: Any!) {
         InputHealth.shared.phase("activate.begin", count: "activations")
@@ -111,7 +118,8 @@ final class CapsFlowInputController: IMKInputController {
         if event.type == .flagsChanged {
             accepted = session.flags(key: event.keyCode, option: flags.contains(.option), command: flags.contains(.command),
                                  control: flags.contains(.control), shift: flags.contains(.shift),
-                                 at: event.timestamp, client: native)
+                                 at: event.timestamp, client: native,
+                                 candidateSelectionEnabled: event.keyCode == 61 ? Self.optionSelectsCandidate : true)
             return accepted
         }
         guard event.type == .keyDown else { return false }
@@ -130,7 +138,7 @@ final class CapsFlowInputController: IMKInputController {
             _ = client.attributes(forCharacterIndex: 0, lineHeightRectangle: &rect)
             guard rect.minX.isFinite, rect.minY.isFinite, rect.height > 0 else { return }
             if self.panel == nil { self.panel = EnglishPanel() }
-            self.panel?.show(text, caret: rect, clientLevel: client.windowLevel())
+            self.panel?.show(text, caret: rect, clientLevel: client.windowLevel(), optionSelectsCandidate: Self.optionSelectsCandidate)
         }
         preview = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.16, execute: work)
@@ -159,8 +167,8 @@ private final class EnglishPanel {
             label.bottomAnchor.constraint(equalTo: background.bottomAnchor, constant: -6)
         ])
     }
-    func show(_ text: String, caret: NSRect, clientLevel: CGWindowLevel) {
-        label.stringValue = "영어 · \(text)    오른쪽 ⌥ / ⌘⌥Z"
+    func show(_ text: String, caret: NSRect, clientLevel: CGWindowLevel, optionSelectsCandidate: Bool) {
+        label.stringValue = "영어 · \(text)    " + (optionSelectsCandidate ? "오른쪽 ⌥ / ⌘⌥Z" : "⌘⌥Z")
         guard let screen = NSScreen.screens.first(where: { $0.frame.intersects(caret) }) ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
         let width = min(max(220, label.intrinsicContentSize.width + 18), min(440, visible.width - 12))

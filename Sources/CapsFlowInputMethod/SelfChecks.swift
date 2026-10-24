@@ -326,6 +326,33 @@ func runInputMethodChecks() {
         type("(dkssud) [3qjsdl] \"dkssud\"", session, client)
         expect(client.text == "(안녕) [3번이] \"안녕\"", "brackets and quotes")
     }
+    // Windows-style Alt is a mode switch, never a candidate acceptance.
+    // The menu process owns switching; native IMK passes modifier events and
+    // commits the composition on source deactivation, preserving surrounding text.
+    for enabled in [false, true] {
+        let (session, client) = new("앞 😀뒤", caret: "앞 ".utf16.count)
+        type("r", session, client)
+        expect(!session.flags(key: 61, option: true, command: false, control: false, shift: false,
+                              at: clock, client: client, candidateSelectionEnabled: enabled), "preset Option down passes")
+        let applied = session.flags(key: 61, option: false, command: false, control: false, shift: false,
+                                    at: clock + 0.1, client: client, candidateSelectionEnabled: enabled)
+        expect(applied == enabled, "only Caps presets accept Option candidate")
+        expect(client.text == (enabled ? "앞 r😀뒤" : "앞 ㄱ😀뒤"), "preset preserves selected language and suffix")
+        expect(session.handle(InputStroke(key: 6, text: "z", time: clock + 0.2, command: true, option: true), client: client), "Cmd Option Z remains available")
+        expect(client.text == (enabled ? "앞 ㄱ😀뒤" : "앞 r😀뒤"), "explicit shortcut reverses language")
+        session.commit(to: client)
+        expect(client.text == (enabled ? "앞 ㄱ😀뒤" : "앞 r😀뒤"), "source deactivation preserves current composition")
+        expect(client.marked.location == NSNotFound, "source deactivation clears preedit")
+    }
+    for enabledAtPress in [false, true] {
+        let (session, client) = new()
+        type("r", session, client)
+        _ = session.flags(key: 61, option: true, command: false, control: false, shift: false,
+                          at: clock, client: client, candidateSelectionEnabled: enabledAtPress)
+        expect(!session.flags(key: 61, option: false, command: false, control: false, shift: false,
+                              at: clock + 0.1, client: client, candidateSelectionEnabled: !enabledAtPress), "preset change cancels held Option")
+        expect(client.text == "ㄱ", "preset change cannot apply pending candidate")
+    }
     for _ in 0..<3 {
         let (session, client) = new()
         for iteration in 0..<4 {

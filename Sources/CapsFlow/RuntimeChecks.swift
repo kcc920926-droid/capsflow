@@ -129,12 +129,43 @@ func runRuntimeChecks() {
     expect(CapsLockBehavior.restored("unknown") == .cycle)
     expect(CapsLockBehavior.restored("speed") == .speed)
     expect(CapsLockBehavior.restored("cycle") == .cycle)
+    expect(CapsLockBehavior.restored("rightAlt") == .rightAlt)
+    expect(CapsLockBehavior.allCases.count == 3)
+    for behavior in CapsLockBehavior.allCases {
+        expect(CapsLockBehavior.restored(behavior.rawValue) == behavior)
+        expect(behavior.capturesCapsLock == (behavior != .rightAlt))
+        expect(behavior.usesRightOptionForCandidate == (behavior != .rightAlt))
+        var route = CapsToggleTrigger()
+        for (type, key, flags) in [(CGEventType.keyDown, Int64(79), CGEventFlags()),
+                                    (.keyUp, 79, []), (.flagsChanged, 57, .maskAlphaShift),
+                                    (.keyDown, 57, .maskAlphaShift), (.keyUp, 57, [])] {
+            let result = route.observe(type: type, key: key, flags: flags, repeating: false,
+                                       time: 1, captureCaps: behavior.capturesCapsLock)
+            expect((result == .pass) == (behavior == .rightAlt))
+        }
+        if behavior == .rightAlt { expect(!route.capturedRawCaps) }
+        route.reset()
+        expect(route.observe(type: .keyDown, key: 49, flags: [.maskControl, .maskShift], repeating: false,
+                              time: 2, captureCaps: behavior.capturesCapsLock) == .toggle)
+        expect(route.observe(type: .keyDown, key: 49, flags: [.maskControl, .maskShift], repeating: true,
+                              time: 2.1, captureCaps: behavior.capturesCapsLock) == .consume)
+        expect(route.observe(type: .keyUp, key: 49, flags: [], repeating: false,
+                              time: 2.2, captureCaps: behavior.capturesCapsLock) == .consume)
+    }
     expect(CapsLockBehavior.cycle.next(from: .korean) == .english)
     expect(CapsLockBehavior.cycle.next(from: .english) == .automatic)
     expect(CapsLockBehavior.cycle.next(from: .automatic) == .korean)
     expect(CapsLockBehavior.speed.next(from: .korean) == .english)
     expect(CapsLockBehavior.speed.next(from: .english) == .korean)
     expect(CapsLockBehavior.speed.next(from: .automatic) == .english)
+    expect(CapsLockBehavior.rightAlt.next(from: .automatic) == .english)
+    for start in InputMode.allCases {
+        var mode = start
+        for _ in 0..<40 {
+            mode = CapsLockBehavior.rightAlt.next(from: mode)
+            expect(mode != .automatic)
+        }
+    }
     for start in InputMode.allCases {
         var mode = start
         for _ in 0..<40 {
@@ -381,5 +412,22 @@ func runRuntimeChecks() {
     expect(!singleTap.observe(type: .flagsChanged, key: 61, flags: rightOption, time: 1, eligible: true))
     expect(singleTap.observe(type: .flagsChanged, key: 61, flags: [], time: 1.1, eligible: true))
     expect(!singleTap.observe(type: .flagsChanged, key: 61, flags: [], time: 1.2, eligible: true))
+    // The Windows preset routes standalone right-Option gestures to modes,
+    // independent of candidate presence. Modifier events themselves pass through.
+    for hasCandidate in [false, true] {
+        var tap = RightOptionTap()
+        var mode: InputMode = .automatic
+        let preset = CapsLockBehavior.rightAlt
+        expect(!preset.usesRightOptionForCandidate || !hasCandidate)
+        for index in 0..<20 {
+            let time = Double(index)
+            expect(!tap.observe(type: .flagsChanged, key: 61, flags: rightOption, time: time, eligible: true))
+            let switches = tap.observe(type: .flagsChanged, key: 61, flags: [], time: time + 0.1, eligible: true)
+            expect(switches)
+            if switches { mode = preset.next(from: mode) }
+            expect(mode == (index.isMultiple(of: 2) ? .english : .korean))
+            expect(!tap.observe(type: .flagsChanged, key: 61, flags: [], time: time + 0.2, eligible: true))
+        }
+    }
     print("Runtime checks: \(checks) passed")
 }

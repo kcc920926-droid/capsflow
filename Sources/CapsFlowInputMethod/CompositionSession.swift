@@ -125,7 +125,8 @@ final class CompositionSession {
         return false
     }
     func flags(key: UInt16, option: Bool, command: Bool, control: Bool, shift: Bool,
-               at time: TimeInterval, client: CompositionClient) -> Bool {
+               at time: TimeInterval, client: CompositionClient, candidateSelectionEnabled: Bool = true) -> Bool {
+        guard candidateSelectionEnabled else { optionDown = nil; optionAlone = false; return false }
         guard key == 61 else { if optionDown != nil { optionAlone = false }; return false }
         if option {
             optionDown = time; optionAlone = !command && !control && !shift

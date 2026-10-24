@@ -21,6 +21,7 @@ final class EventEngine {
     private var source: CFRunLoopSource?
     private let mapper = CapsKeyMapper()
     private var capsTrigger = CapsToggleTrigger()
+    private var modeOptionTap = RightOptionTap()
     private var backspaceHold = BackspaceHold()
     private(set) var longBackspaceEnabled = UserDefaults.standard.object(forKey: BackspaceHold.preferenceKey) as? Bool ?? true
     private let worker = DispatchQueue(label: "local.capsflow.context", qos: .userInteractive)
@@ -84,6 +85,7 @@ final class EventEngine {
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             self.capsTrigger.releaseHeldKeys()
+            self.modeOptionTap.reset()
             self.cancelPending(toOriginalProcess: true)
             self.reset()
             if self.running { self.prepareFrontmostContext() }
@@ -124,7 +126,7 @@ final class EventEngine {
         source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, newTap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: newTap, enable: true)
-        do { try mapper.start() }
+        do { if capsLockBehavior.capturesCapsLock { try mapper.start() } }
         catch { stop(); status = error.localizedDescription; onUpdate?(); return false }
         running = true
         capsTrigger.reset()
@@ -175,8 +177,19 @@ final class EventEngine {
         // Native IMK owns Auto composition. No AX context reads or prewarming.
     }
     func setCapsLockBehavior(_ value: CapsLockBehavior) {
+        guard value != capsLockBehavior else { return }
+        if running, value.capturesCapsLock, !capsLockBehavior.capturesCapsLock {
+            do { try mapper.start() }
+            catch { mapper.stop(); status = error.localizedDescription; onUpdate?(); return }
+        } else if running, !value.capturesCapsLock { mapper.stop() }
+        if value.capturesCapsLock == capsLockBehavior.capturesCapsLock { capsTrigger.releaseHeldKeys() }
+        else { capsTrigger.reset() }
         capsLockBehavior = value
+        modeOptionTap.reset(); rightOptionTap.reset()
         UserDefaults.standard.set(value.rawValue, forKey: CapsLockBehavior.preferenceKey)
+        // IMK is a separate process. Publish the candidate-key policy before
+        // the next Option event, without changing the current input source.
+        UserDefaults.standard.synchronize()
         if running { status = connectionStatus }
         // Changing a key route must not silently switch the current IME/mode.
         onUpdate?()
@@ -188,6 +201,7 @@ final class EventEngine {
         onUpdate?()
     }
     private var connectionStatus: String {
+        if !capsLockBehavior.capturesCapsLock { return "오른쪽 Alt 연결됨 · " + capsLockBehavior.title }
         let path = mapper.mappedCount > 0 ? "Caps Lock 연결됨" : "원격 키 연결됨 · 직접 연결 키보드 없음/매핑 없음"
         return path + " · " + capsLockBehavior.title
     }
@@ -195,7 +209,7 @@ final class EventEngine {
         guard running else { return }
         status = connectionStatus; onUpdate?()
     }
-    func reset() { backspaceHold.reset(); releaseSelectionEdit(toOriginalProcess: true); clearSuggestion(); continuation = nil; token = ""; invalidToken = false; last = nil; generation += 1 }
+    func reset() { modeOptionTap.reset(); backspaceHold.reset(); releaseSelectionEdit(toOriginalProcess: true); clearSuggestion(); continuation = nil; token = ""; invalidToken = false; last = nil; generation += 1 }
 
     private func clearSuggestion() {
         rightOptionTap.reset()
@@ -296,13 +310,30 @@ final class EventEngine {
         let isKeyboard = type == .keyDown || type == .keyUp || type == .flagsChanged
         let trigger = capsTrigger.observe(type: type, key: key, flags: event.flags,
                                           repeating: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
-                                          time: TimeInterval(event.timestamp) / 1_000_000_000)
+                                          time: TimeInterval(event.timestamp) / 1_000_000_000,
+                                          captureCaps: capsLockBehavior.capturesCapsLock)
         if trigger != .pass {
             backspaceHold.reset()
             if trigger == .toggle { cycle() }
             return nil
         }
-        if isKeyboard && capsTrigger.capturedRawCaps && !IsSecureEventInputEnabled() && event.flags.contains(.maskAlphaShift) {
+        if capsLockBehavior == .rightAlt,
+           modeOptionTap.observe(type: type, key: key, flags: event.flags,
+                                 time: TimeInterval(event.timestamp) / 1_000_000_000,
+                                 eligible: !IsSecureEventInputEnabled()) {
+            let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            let previous = mode
+            // Pass the unchanged modifier release to the host/IMK first.
+            // Source deactivation commits the marked word; no synthetic keys.
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.running, self.capsLockBehavior == .rightAlt,
+                      self.mode == previous, !IsSecureEventInputEnabled(),
+                      NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else { return }
+                self.cycle()
+            }
+            return Unmanaged.passUnretained(event)
+        }
+        if capsLockBehavior.capturesCapsLock && isKeyboard && capsTrigger.capturedRawCaps && !IsSecureEventInputEnabled() && event.flags.contains(.maskAlphaShift) {
             let text = Self.characters(event)
             let adjusted = CapsToggleTrigger.unlatchedASCII(text, flags: event.flags)
             if adjusted != text {
